@@ -1,0 +1,33 @@
+/* Metric-matched fallback faces: while the web font downloads, the text takes exactly the same space, so nothing
+   moves when it arrives. Values computed with fontTools from the site's own woff2 files against Arial (present on
+   macOS, iOS and Windows). Compute them for YOUR fonts: never copy these numbers.
+     size-adjust      = (mean advance of a sample string in the web font) / (same string in the fallback)
+     ascent-override  = ascender / (unitsPerEm x size-adjust)
+     descent-override = |descender| / (unitsPerEm x size-adjust)
+   Never derive size-adjust from OS/2 xAvgCharWidth: foundries average it on different bases (one gave 138%).
+   Safari applies size-adjust but NOT ascent/descent-override: keep line-height explicit everywhere.
+   Use the same unicode-range as the web font, so glyphs the font lacks still fall through to system-ui. */
+@font-face {
+  font-family: 'Inter Fallback';
+  font-style: normal;
+  font-weight: 100 549;
+  src: local('Arial'), local('ArialMT');
+  size-adjust: 105.94%;
+  ascent-override: 91.45%;
+  descent-override: 22.77%;
+  line-gap-override: 0%;
+}
+@font-face {
+  font-family: 'Inter Fallback';
+  font-style: normal;
+  font-weight: 550 900;
+  src: local('Arial Bold'), local('Arial-BoldMT');
+  size-adjust: 100.46%;
+  ascent-override: 96.43%;
+  descent-override: 24.01%;
+  line-gap-override: 0%;
+}
+body {
+  font-family: 'Inter', 'Inter Fallback', system-ui, sans-serif;
+  line-height: 1.6;
+}

@@ -1,0 +1,6 @@
+# While the site is NOT indexable: crawlable (so Google can read the noindex on every page), no Sitemap line.
+# The legal pages are disallowed in EVERY group, including any group you add for named bots.
+User-agent: *
+Allow: /
+Disallow: /privacy/
+Disallow: /terms/

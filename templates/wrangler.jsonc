@@ -1,0 +1,23 @@
+{
+  // Cloudflare Worker for example.com. Serves SITE/, which the site's generator writes (never by hand).
+  // Deploy only through your deploy script (audit -> deploy -> wait for new files -> purge -> verify live = build).
+  // If the zone caches HTML at the edge (it should, see docs/07), a bare `npx wrangler deploy` stays invisible
+  // until you purge.
+  // Placeholder while the site does not exist yet: "directory": "./PLACEHOLDER" and
+  // "not_found_handling": "single-page-application", so every old link lands on the "site under construction" page.
+  "name": "example-site",
+  "compatibility_date": "2026-09-01",
+  "main": "worker.js",
+  "assets": {
+    "directory": "./SITE",
+    "binding": "ASSETS",
+    "run_worker_first": true,
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "404-page"
+  },
+  "routes": [
+    { "pattern": "example.com", "custom_domain": true },
+    { "pattern": "www.example.com", "custom_domain": true },
+    { "pattern": "example.your-agency.com", "custom_domain": true }
+  ]
+}

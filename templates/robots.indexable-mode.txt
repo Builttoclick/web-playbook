@@ -1,0 +1,13 @@
+# Indexable: the same plus the Sitemap line. Legal pages stay disallowed in every group: a bot with its own group
+# (an AI crawler welcomed by name) ignores the * group entirely, so repeat the Disallow lines there.
+User-agent: *
+Allow: /
+Disallow: /privacy/
+Disallow: /terms/
+
+User-agent: GPTBot
+Allow: /
+Disallow: /privacy/
+Disallow: /terms/
+
+Sitemap: https://example.com/sitemap.xml

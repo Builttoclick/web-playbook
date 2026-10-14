@@ -1,0 +1,39 @@
+/* Counting numbers that never move the text next to them.
+   1. Between hydration and CountUp's first "0" the span is EMPTY for one frame: a paragraph holding only that
+      span collapsed to 0 px (a 36 px jump measured on a phone). Fill it while empty.
+   2. The box is as wide as the FINAL number (figure-N, written by the generator; the island also locks the exact
+      pixel width before hydrating), so a "%" or a word next to it never shifts while it counts. */
+.figure {
+  display: inline-block;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.figure:empty::before {
+  content: '0';
+}
+.figure-1 { min-width: 1ch; }
+.figure-2 { min-width: 2ch; }
+.figure-3 { min-width: 3ch; }
+.figure-4 { min-width: 4ch; }
+.figure-5 { min-width: 5ch; }
+.figure-6 { min-width: 6ch; }
+
+/* Hero figures: the poster already holds the final numbers. If the counter island does not arrive within about
+   1.3 s, they simply appear (CSS alone) and the island will not count. While the island is downloading in time,
+   "waiting" holds the reveal back; "counting" and "still" show them. */
+.hero__figures {
+  opacity: 0;
+  animation: figures-show 0.5s ease 1.4s forwards;
+}
+.hero__figures.waiting {
+  animation: none;
+  opacity: 0;
+}
+.hero__figures.counting,
+.hero__figures.still {
+  animation: none;
+  opacity: 1;
+}
+@keyframes figures-show {
+  to { opacity: 1; }
+}

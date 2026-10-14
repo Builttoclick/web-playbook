@@ -1,0 +1,98 @@
+/* A scroll-linked 3D frame, one set of @keyframes driven two ways:
+   1. CSS alone, on the compositor, where scroll-driven animations exist (Chrome 115+, Edge, Safari 26): the
+      timeline is the ENTRY of an invisible sentinel (its top edge crosses the bottom of the screen = 0 %, its
+      bottom edge crosses it = 100 %).
+   2. The island fx/islands/frame.jsx elsewhere: the same animations, paused, with currentTime set from scroll.
+   Both paths give identical matrices at every scroll position.
+   The numbers live ONLY in the keyframes, as literals per breakpoint: keyframes that use var() are not
+   guaranteed to run on the compositor. Without JavaScript, or with reduced motion, there is no animation: the
+   frame is flat from the first paint. */
+.scene-section {
+  overflow-x: clip; /* the frame starts larger than its column: never sideways scroll */
+}
+.scene {
+  --frame-span: 75vh; /* how much scroll the entrance lasts */
+}
+.scene-title {
+  margin-bottom: 6px; /* + the 40 px the title rises by the end = the usual spacing */
+  animation-name: scene-title-in;
+}
+.scene-span {
+  position: relative;
+  perspective: 1400px;
+  perspective-origin: 50% 30%;
+}
+.scene-sentinel {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1px;
+  height: var(--frame-span);
+  pointer-events: none;
+}
+.scene-frame {
+  transform-origin: 50% 50%;
+  animation-name: scene-frame-in;
+}
+@keyframes scene-frame-in {
+  from { transform: rotateX(20deg) scale(1.05); }
+  to   { transform: rotateX(0deg) scale(1); }
+}
+@keyframes scene-frame-in-tablet {
+  from { transform: rotateX(14deg) scale(1.04); }
+  to   { transform: rotateX(0deg) scale(1); }
+}
+@keyframes scene-frame-in-phone {
+  from { transform: rotateX(10deg) scale(1.04); }
+  to   { transform: rotateX(0deg) scale(1); }
+}
+@keyframes scene-title-in {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-40px); }
+}
+@keyframes scene-title-in-phone {
+  from { transform: translateY(0); }
+  to   { transform: translateY(-24px); }
+}
+
+/* 1. CSS only */
+@supports (animation-timeline: view()) and (timeline-scope: --a) {
+  @media (prefers-reduced-motion: no-preference) {
+    .scene {
+      timeline-scope: --frame;
+    }
+    .scene-sentinel {
+      view-timeline: --frame block;
+    }
+    .scene-frame,
+    .scene-title {
+      animation-timing-function: linear;
+      animation-fill-mode: both;
+      animation-timeline: --frame;
+      animation-range: entry 0% entry 100%;
+    }
+  }
+}
+
+/* 2. the island: the same animations, paused, 1 s long; it writes currentTime = progress x 1000 */
+.scene.frame-js .scene-frame,
+.scene.frame-js .scene-title {
+  animation-duration: 1s;
+  animation-timing-function: linear;
+  animation-fill-mode: both;
+  animation-play-state: paused;
+  animation-timeline: auto;
+}
+
+@media (max-width: 1000px) {
+  .scene-frame { animation-name: scene-frame-in-tablet; }
+}
+@media (max-width: 640px) {
+  .scene { --frame-span: 70vh; }
+  .scene-span {
+    perspective: 1800px;
+    perspective-origin: 50% 18%; /* a tall frame in one column: raise the vanishing point so its top edge does not drop much */
+  }
+  .scene-frame { animation-name: scene-frame-in-phone; }
+  .scene-title { animation-name: scene-title-in-phone; }
+}

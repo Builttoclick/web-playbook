@@ -1,0 +1,37 @@
+/* Entrances driven by entrance() in fx/islands/_common.js. The block only crouches (.enter) if it was NOT on
+   screen when the island arrived; .live plays the entrance; .no-anim shows it at once when the visitor jumped
+   past it (anchor link, fast scroll), so it never stays hidden. Example: bars that grow one after the other. */
+.bars.enter .bar {
+  transform: scaleY(0);
+  transform-origin: bottom center;
+}
+.bars.enter .bar-value {
+  opacity: 0;
+  transform: translateY(6px);
+}
+.bars.enter.live .bar {
+  transform: none;
+  transition: transform 0.9s var(--ease);
+  transition-delay: calc(var(--i) * 90ms);
+}
+.bars.enter.live .bar-value {
+  opacity: 1;
+  transform: none;
+  transition: opacity 0.5s var(--ease), transform 0.5s var(--ease);
+  transition-delay: calc(var(--i) * 90ms + 0.45s);
+}
+.no-anim .bar,
+.no-anim .bar-value {
+  transition: none !important;
+}
+:root {
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .bars.enter .bar,
+  .bars.enter .bar-value {
+    transform: none;
+    opacity: 1;
+    transition: none;
+  }
+}
