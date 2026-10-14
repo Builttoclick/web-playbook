@@ -107,6 +107,19 @@ staff names, claims the client never made, long lists that want to be a grid, an
 **Proposals describe the result, never the machinery.** The client buys what the site will do for them, not how we
 build it.
 
+**Field notes:**
+- **The owner's own words win.** A slogan printed on the shop front and repeated in their Facebook bio is their copy: it
+  stays as the H1.
+- **The rules apply to invisible strings too.** Three em dashes survived in an `aria-label` and a map `title`.
+- "Never say what we don't do" bites legal copy as well: "We only start work you have approved" keeps the legal effect
+  of a limitation and reads as a promise.
+- A question-first page can carry a whole site: a services page that asks the buyer's question per category ("Do you
+  repair washing machines?"), an about page that opens with "Who will come into my home?". The `FAQPage` schema then
+  comes from the question headings. The H1 still states.
+- **Second language without hand-pasting fragments:** render both languages from the same template, split both outputs
+  on tags, assert the tag sequences are identical, and pair the text pieces into a translation dictionary that the build
+  applies. A translated piece after a tag must keep the original's leading space.
+
 ---
 
 ## The copy document and the review rounds
@@ -220,5 +233,13 @@ a law onto pages:
 | Personal data law (Ley 7593/2025, in force from November 2027) | identity, purposes and legal basis, recipients, international transfers, retention, rights answered within 30 days, breach notice, minors |
 | Do-not-contact law (Ley 5830/2017) | check the national do-not-contact registry before any commercial call or message to a mobile (exceptions: existing clients, express authorisation) |
 
-We verified each article against the official legal database before writing the first drafts. A cookie mechanism is
-the one item still pending a decision on our sites.
+We verified each article against the official legal database in October 2026, before writing the first drafts. Two
+details worth knowing: the 7-day withdrawal for off-premises contracts matters to any business that measures or quotes
+at the client's home, and an exclusive-jurisdiction clause in a contract the client cannot negotiate is abusive. A
+cookie mechanism is the one item still pending a decision on our sites. Laws change: re-check the current text before
+relying on this table.
+
+**One text source per site, many renderers.** Each client's legal text lives in one Markdown file (`#` page, `##`
+section, `-` list items, bold, links) parsed by a small module that feeds every kind of site we run: the Python
+generators, an Astro component through a JSON export, and bilingual pages with one file per language and the same
+structure. The agency owner edits the Markdown, never the HTML.

@@ -60,8 +60,9 @@ was not the delay, the animation was. We stayed on `swap`, which shows the right
 of a Pages site: assets come back `HIT` but every page is `DYNAMIC` and travels to the origin. One cache rule
 scoped to the site's hostnames (details in [11-deploy-hosting-domains-email.md](11-deploy-hosting-domains-email.md))
 took our median TTFB from 180 to 127 ms, and two client sites from about 160-190 to 107-115 ms and from about 170
-to 130 ms. That is also why sites on Vercel "feel faster": their HTML lives at the edge. The price: every deploy
-must purge, or nobody sees it.
+to 130 ms. That is also why sites on Vercel "feel faster": their HTML lives at the edge. A Worker serving static
+assets is already edge-cached (`HIT` with no rule), which is one reason new client sites run as Workers. The price
+either way: every deploy must purge, or nobody sees it.
 
 ---
 
@@ -81,7 +82,8 @@ must purge, or nobody sees it.
   metric-compatible fallback face with `size-adjust`, `ascent-override` and `descent-override` computed as
   `metric / (unitsPerEm × sizeAdjust)`. **Never derive `size-adjust` from OS/2 `xAvgCharWidth`**: foundries average
   it on different bases and one came out at 138%. Measure the mean advance of a real sample string against the
-  fallback. Safari applies `size-adjust` but not the ascent and descent overrides, so keep `line-height` explicit.
+  fallback. Safari applies `size-adjust` but, as of October 2026, not the ascent and descent overrides, so keep
+  `line-height` explicit.
   A working example is in [`code/islands/css/fallback-fonts.example.css`](../code/islands/css/fallback-fonts.example.css).
 - **Check your currency glyph in the font file** (we check the guaraní sign with fontTools). Inter does not have it.
 - **Renaming font files means keeping the old ones on the server.** A returning visitor inside the CSS cache window
@@ -122,9 +124,67 @@ must purge, or nobody sees it.
 - **0-RTT left off on purpose**: Cloudflare only uses it for GETs without a query string, and ad and social clicks
   always carry one.
 - **Tiered cache left off**: from our country a MISS on a static host costs only 10 to 20 ms more than a HIT.
-- **The HTML cache rule** (24 h at the edge, browser TTL respecting origin, scoped to the site's hostnames, query
-  string excluded from the cache key) **also caches 404s for the whole TTL**: add a status-code TTL of 60 s for 400
-  to 599.
+- **The HTML cache rule** on Pages sites (24 h at the edge, browser TTL respecting origin, scoped to the site's
+  hostnames, query string excluded from the cache key) **also caches 404s for the whole TTL**: add a status-code TTL of
+  60 s for 400 to 599. Worker static-asset sites are edge-cached without a rule.
+
+---
+
+## Field notes from the log
+
+**First bytes and critical CSS**
+- The "H1 in the first 2,000 bytes" check counts UTF-8 bytes, not characters. Keep only `:root`, `body` and the H1 rules
+  in the `<style>` in the `<head>`, and put a second `<style>` right after the hero. One single-file demo moved its H1
+  from byte 10,000 to byte 3,550 this way.
+- **A preloaded hero needs the same `imagesrcset` and `imagesizes` as its `<img srcset>`**, or a phone downloads two
+  copies: the preload URL and the srcset pick.
+
+**Fonts**
+- **Subsetting a static font pays about eight to one**: a 15 KB latin plus 12 KB latin-ext pair became 11 KB with
+  `pyftsubset --unicodes=<basic latin, accents, typographic punctuation, your currency sign> --flavor=woff2
+  --layout-features=* --no-hinting`. A two-axis variable font of the same family was 88 KB.
+- **Fix a missing glyph without touching the design:** a one-glyph fallback family (`pyftsubset src.woff2
+  --unicodes=U+20B2 --flavor=woff2`, about 700 bytes) declared with `unicode-range: U+20B2` behind the family that lacks
+  it. The browser only downloads it when a page uses the glyph.
+- The guaraní sign (U+20B2) lives in the latin-ext subset, so serve both subsets. Checked with fontTools: present in
+  Archivo, Archivo Narrow, Asap, IBM Plex Sans and Mono, Nunito, Nunito Sans, Oswald, Source Sans 3, Source Serif 4,
+  Space Mono, Big Shoulders, and the system faces Segoe UI, Arial, Verdana and Roboto. Missing in Inter, Figtree, Public
+  Sans, Urbanist, Manrope, JetBrains Mono, Fira Mono and Roboto Mono. Have the generator assert the glyph is never used
+  with a font that lacks it.
+- Google Fonts' CSS2 API, asked with a current Chrome User-Agent, returns one variable woff2 per subset covering every
+  weight: deduplicate by URL, not by weight, and declare `font-weight: 400 700`. Families with a width axis
+  (`wdth,wght@75..125,100..900`, declared with `font-stretch: 75% 125%`) give condensed headings and normal text from one
+  file. `&text=` subsets a display face down to the letters of a logo.
+- The CSS `font` shorthand resets `font-stretch`: declare the stretch after it.
+- fontTools: subsetting right after instancing a variable font can fail on a lazily loaded table. Load with `lazy=False`,
+  instance, save to memory, reload with `lazy=False`, then subset.
+- Give a metric fallback face the same `unicode-range` as the web font, or it steals glyphs the web font lacks.
+
+**Images**
+- **Pick `srcset` widths from the source size.** Square 1080 px photos need only 1080, 720 and 360; a source narrower than
+  your widest width needs its own set, never an upscale.
+- `naturalWidth` on an image with a `w`-descriptor `srcset` is in CSS pixels (file width over the chosen density); read
+  `currentSrc` to see which file loaded.
+- **iPhone photos are Display P3.** Convert to sRGB with a colour-management step before saving a web JPG or WebP, or the
+  colours go flat.
+- A long-cached photo re-cropped under the same name never refreshes for returning visitors: append `?v=<hash>`. If the
+  edge cache ignores the query string, purge the bare URL too.
+- In-browser image compression on upload that works on phones: `createImageBitmap(file, {imageOrientation:
+  'from-image'})`, a canvas with a white fill, `toBlob('image/webp', .8)`, and a retry as JPEG when the returned blob is
+  not WebP (older Safari cannot encode WebP). HEIC fails in Chrome; say so in the interface.
+
+**Measuring**
+- **Deferring analytics moved Best Practices, not LCP:** session-recording scripts set third-party cookies inside the
+  Lighthouse window (Best Practices 77, then 100 once they loaded after the first interaction). A footer `h4` changed to
+  `h2` took Accessibility from 98 to 100.
+- Never quote session-recording "web vitals" as load speed: one tab left open produced a 114-second average LCP.
+- Time TTFB with several requests on one kept-alive `curl` call. The same host measured 2.1 s cold and 0.16 s minutes
+  later. A direct `*.pages.dev` URL was slower than the proxied custom domain (310 vs 184 ms).
+- Compare libraries minified and gzipped against minified and gzipped, never against the raw size of your own file. One
+  component weighed 38.7 KB gzip, almost twice a whole home page.
+- Workers static assets default to `max-age=0, must-revalidate` (unless `_headers` says otherwise): browsers revalidate
+  by ETag, so a purge is enough. Our template gives `/assets/*` a year of immutable cache instead, which is exactly why
+  every asset URL there carries a version.
 
 ---
 
@@ -142,7 +202,8 @@ must purge, or nobody sees it.
 - [ ] No raw video; video served with `Range` support; YouTube behind a facade.
 - [ ] Analytics deferred to interaction (not scroll), only on the real host.
 - [ ] CSS/JS minified; every asset URL versioned; `immutable` only on hashed URLs.
-- [ ] HTML cached at the edge with a purge on every deploy; 404s cached 60 s only; Early Hints on.
+- [ ] HTML cached at the edge (Worker assets by default, a cache rule on Pages) with a purge on every deploy; 404s
+      cached 60 s only; Early Hints on.
 - [ ] TTFB measured with 5+ samples, median.
 
 ## Checklist · runtime smoothness

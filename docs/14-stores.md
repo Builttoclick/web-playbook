@@ -105,6 +105,49 @@ with real hours, and a quiet "add to home screen" line on a second order.
 
 ---
 
+## Field notes from the log (front and back)
+
+Our stores run on Cloudflare: a Worker renders the storefront from a published snapshot of the catalogue, with D1
+(SQLite) behind an admin panel, and photos and video in R2.
+
+**Data and the free plan**
+- **A partial index is used only if the query repeats its condition.** An index `ON product(code) WHERE code <> ''` was
+  ignored by `WHERE code = 'X'`, and one photo load read about 19 million rows (the free plan stops every D1 database of
+  the account at 5 million rows read a day). Adding `AND code <> ''` to the query read 38 thousand.
+- Let SQLite build the JSON (`json_group_array` over pages of 500 rows) and have the Worker only join strings: 3,000
+  products stay inside the free plan's 10 ms of CPU. Bulk actions with one bound parameter: `WHERE id IN (SELECT value
+  FROM json_each(?1))`, which also avoids the limit of 100 bound parameters.
+- **A schema file with `CREATE ... IF NOT EXISTS` never adds a column to an existing database.** Run the `ALTER TABLE
+  ... ADD COLUMN` on every store (remote and local) before deploying code that writes it, or a swallowed insert drops
+  orders from the panel while WhatsApp still works.
+- **Big catalogue, small browser:** the cart asks only for its own products, and the search index is a separate file
+  cached per catalogue version. Omitting slugs that equal the slugified name cut one index from 108 to 85 KB gzip.
+
+**Settings and operations**
+- **A delivery-zone line is saved only if all of it was understood** ("City 15,000" parses; "free above X" or two prices
+  in one line are refused with an example), because a guess becomes a wrong charge on a customer's order. Store zones in
+  one normalised form and compare against that form.
+- Changing the WhatsApp number in the settings is not enough when the storefront reads a published snapshot: republish
+  the snapshot.
+- **Live QA after launch must not leave orders in the real panel:** run storefront checks live, and the order flow only
+  against a local server with a local database. Block analytics in every scripted run.
+- Two people on one store: write down who owns which folder, and deploy the backend from a separate build folder so a
+  half-written storefront never ships. When deleting a folder a dev server watches fails, empty it instead.
+- To ship one engine fix without dragging anything else, rebuild the engine as it was before the fix and diff it against
+  the store's live files (with version hashes stripped): identical means the store is in sync.
+- Store video goes to the media bucket with an immutable cache header (Worker assets answer 200 to `Range`, which Safari
+  will not play), and share-card images must be in the bucket before the deploy that lists them.
+- **An Android app for any store** can be generated as a Trusted Web Activity from a manifest-only template, and the link
+  between site and app can be verified without a phone through Google's Digital Asset Links check endpoint
+  (`{"linked": true}`).
+- A theme font in the panel must be same-origin if the panel's CSP has no `font-src`.
+- **Scraping a client's old store on shared hosting: one request at a time.** Six parallel threads took a shared site
+  down; one category page took 156 seconds. Products often come from paginated AJAX feeds, so "the category is empty"
+  from curl may be false. Photo URLs without an extension or content type: decide by the file signature and reject empty
+  bodies.
+
+---
+
 ## Non-negotiables, in one list
 
 - [ ] `api.whatsapp.com/send`; the order saved and numbered before WhatsApp opens; a real tapped link.

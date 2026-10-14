@@ -94,6 +94,64 @@ conversation the same afternoon.
 
 ---
 
+## Field notes from the log
+
+**WhatsApp links and builders**
+- **Build the WhatsApp URL inside the tap handler, with no `await` before navigating.** iOS hands off to the app only
+  from a direct user gesture.
+- **A message builder that works without JavaScript:** make every option chip a real `<a href="...wa link...">`. The
+  script prevents the default, toggles the chip's state and `aria-pressed`, rewrites the message preview and every
+  WhatsApp link on the page. An empty-value chip ("Other") marks but adds no text.
+- Those chips inflated a key event, because the tracker listened to every `a[href]`. Mark wired chip lists with a data
+  attribute and skip them in the tracker; without JavaScript the attribute never appears and real navigation still counts.
+- **To hide a floating WhatsApp bubble while a builder is on screen, observe the builder card with threshold 0**, not the
+  whole section at 25%: a section taller than four phone screens never reaches 25%.
+
+**Analytics**
+- **Make conversions easy to change:** one config object at the top of the tracking file mapping each trigger to an event
+  (`whatsapp_click`, `tel_click`, `cta_click`, off), one capture-phase listener on links reading a `data-loc` attribute for
+  `button_location`, and the tag injected from that same file so the ID lives in one place.
+- Analytics directly, without a tag manager, is a deliberate choice: a container costs load time. One gtag.js serves both
+  Analytics and Ads.
+- Key events beyond the first can be created through the Admin API (`keyEvents` with `countingMethod:
+  ONCE_PER_EVENT`).
+- The realtime Data API refuses `eventName` and `activeUsers` in one request: query them separately. People summed across
+  months double-count; totals since launch need a query with no date dimension.
+- **Check a client's "N people wrote to me" against analytics:** `whatsapp_click` broken down by date, hour, country, city,
+  device, page, source and `button_location` shows each tap. Analytics' channel list now includes an "AI assistant" source.
+- **Our `whatsapp_click` sent the full pre-written message as a parameter**, and on one site that included what a visitor
+  typed into a personalisation field (sometimes a name). Analytics' terms forbid personal data: drop or mask free-text
+  lines, and grep every site for the parameter.
+
+**Proving the tags work**
+- **Without a dashboard:** `performance.getEntriesByType('resource')` in the page. Session-recording collect beacons show
+  status 204; cross-origin scripts without `Timing-Allow-Origin` show 0, which is normal. Analytics hits sent from a
+  headless browser are not shown in realtime.
+- A brand-new session-recording export token answers with all-zero metrics for hours ("not processed yet", not broken),
+  and the export API allows about ten calls a day per project. Its tag refuses `127.0.0.1`: verify on the live host.
+- One privacy-focused browser serves an empty stub instead of the session-recording tag, so "no hit" there is the browser.
+- **Content-Security-Policy:** session recording needs its script hosts in `script-src` and its collect hosts (plus Bing's)
+  in `connect-src` and `img-src`. Cloudflare's own Web Analytics beacon is injected into every HTML page of a zone that
+  has it on, panels included, so the CSP must allow it too.
+- Session recording's terms require a privacy notice naming the provider and what it captures (behaviour, heatmaps,
+  session replay, first- and third-party cookies) with a link to its privacy statement. Its exported archives keep click
+  text per session but no coordinates: a real click heatmap needs the dashboard.
+- **Live tests without polluting a client's numbers:** block the analytics, tag-manager, session-recording, Meta, Bing and
+  Cloudflare Insights hosts with the DevTools protocol's `Network.setBlockedURLs` in every scripted run.
+- The Meta Conversions API can be called from a Worker: a POST to the Graph API's `/<pixel>/events` with a system-user
+  token.
+
+**Forms**
+- In our form tool every question is required by default; "not required" goes on the input or option block, not on the
+  title. An "other" option gives free text. Help text goes in the placeholder or a text block before the title. On a
+  single-page form the title block's button becomes the submit button. Some settings (meta title, partial submissions)
+  need the paid tier.
+- The privacy page must name every party that receives form data, an agency copy included, and say that email metadata
+  (date, IP, user agent) is personal data.
+- A rate-limit binding on the form endpoint works on Cloudflare's free plan.
+
+---
+
 ## Checklist · conversion and tracking
 
 - [ ] WhatsApp on every screen; a pre-written message per page and section; `api.whatsapp.com` when there is emoji.

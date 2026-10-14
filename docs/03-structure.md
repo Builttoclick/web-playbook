@@ -532,6 +532,78 @@ orderings, but they operated one level too shallow. Spines replaced them.
   `.tabla td:last-child{text-align:right}` twenty lines below: every single-column table rendered
   right-aligned for months. Fix: `.tabla.tabla-l td:last-child`, and grep before naming anything.
 
+### More layout traps from the log
+
+**Images and grids**
+- **`<img width height>` plus a CSS width without `height: auto` stretches the image**: `aspect-ratio` is ignored, and
+  we saw heroes 880 to 1,140 px tall, a 210 px logo rendered about 490 px tall, and the CTA pushed below the fold. A
+  global `img { max-width: 100%; height: auto }`, and `height: 100%` only on object-fit cards.
+- Grid columns holding big images blow out unless they are `minmax(0, 1fr)` and the children get `min-width: 0`.
+- A second `.wrap` inside a section whose first `.wrap` is a grid inherits the grid and fills column one only. Layout
+  rules on generic classes under a section selector hit every instance: give grids their own class.
+- A 9:16 box sized by height overflows narrow, tall phones. Cap the width instead: `width: min(100%, calc(min(78vh,
+  640px) * 9 / 16)); height: auto; aspect-ratio: 9 / 16`.
+- A tall vertical hero photo leaves a 1440x900 viewport: `max-height: min(64vh, 560px)` with `object-fit: cover`, rather
+  than shrinking the H1.
+- `<figure>` carries the browser's 40 px side margins; reset them inside grid cells.
+
+**Spacing and specificity**
+- **A `padding` shorthand on an element that also carries the container class zeroes the side gutter** (the shorthand's
+  `0` is a left and right value). Use `padding-top` and `padding-bottom`. Check that the H1's left edge equals the
+  container gutter at 375 px.
+- **Class collisions only show in captures or measured heights:** a reveal state class `in` collided with an input class
+  and revealed blocks collapsed to 48 px; `.btn.sec` met the section class `.sec` and outline buttons became 178 px tall.
+  State and section classes never share a name with a component.
+- A reveal rule must repeat the hide rule's full selector: a more specific hide rule kept a timeline empty for two days.
+- An override placed before the rule it overrides loses at equal specificity, container queries included.
+- The `font` shorthand resets `font-stretch`; declare the stretch after it.
+- `max-width` in `ch` on a blockquote measures the blockquote's own font, not the large serif inside: cap the `p` that
+  carries the font.
+
+**Sticky and fixed**
+- `position: sticky` on a grid item cannot stick past its own grid area; a sticky bar whose parent is `body` stays stuck
+  to the foot of the page (wrap it with its content so it releases where the content ends).
+- A translucent sticky bar shows text scrolling under it in captures: give it a solid background.
+- Under a sticky header, give scroll targets `scroll-margin-top` (about the header's height).
+
+**Phones**
+- **Text that cannot wrap widens the layout viewport** even when `scrollWidth` reads 375: brand names in `nowrap` spans
+  with no space between them pushed every `position: fixed` element (the bottom bar, a badge) off screen. Put real spaces
+  around separators.
+- A rotated corner ribbon positioned outside the viewport widens the page too: wrap it in a fixed box with `overflow:
+  hidden`. A decorative `::before` with negative inset behind a hero photo caused 32 px of sideways scroll.
+- **Phone top bar:** a bar button without `nowrap` wraps and spills out of a 60 px bar. `nowrap` and `flex-shrink: 0`
+  under about 520 px, a short label on phones, and a step under 360 px that drops the brand subtitle.
+- **Text first on phones.** A photo moved first with `order: -1` pushed the H1 and the main button below the first screen.
+- Measure the widest set of navigation labels before choosing the breakpoint: six links plus logo plus phone do not fit
+  at 1024 px.
+- **H1 measure:** a longer H1 at `max-width: 12ch` wrapped to five lines at 60 px; 15ch gave three. Test the longest H1 of
+  the set. For an H1 with the client's own line breaks, put a space before each `<br>`.
+- A dropdown inside a horizontally scrolling bar gets clipped: on touch, place it with `position: fixed` from the trigger's
+  bounding box and close it on scroll; on desktop let the bar wrap and use a hover menu with a small invisible bridge.
+
+**Type and graphics**
+- A display italic serif after a comma eats the space at large sizes: `h1 em, h2 em { margin-left: .1em }`.
+- `-webkit-text-stroke` on a variable font draws the overlapping contours inside the letters: no outlined text with
+  variable fonts (a 16% tint of the brand colour as a ghost fill works).
+- `hyphens: auto` is unreliable (uppercase names did not hyphenate): insert soft hyphens in the generator.
+  `overflow-wrap: anywhere` as a safety net breaks words in absurd places; use it only on user text.
+- A dark favicon disappears on a dark browser tab: an SVG favicon with an internal `<style>` and a
+  `prefers-color-scheme: dark` rule fixes it (the CSS beats the `fill` attribute).
+- A seamless tile from a designer's SVG pattern: export a standalone SVG with the pattern's own `viewBox` and use it as
+  a repeating background at the pattern's size.
+- A gleam over a transparent cutout: mask a box with the image's own alpha (`mask-image: url(...)`, `mask-size: 100%
+  100%`) and move a light band in its `::before`.
+- Print: a browser prints at about 700 px, so `@media (max-width: 760px)` phone rules apply to paper, and
+  `break-inside: avoid` on every section produced six nearly empty pages. Use `@media screen and (...)` for phone rules,
+  keep `break-inside: avoid` for table rows and small blocks, and `break-after: avoid` on headings.
+- A keyless static map for a location section: OpenStreetMap tiles at zoom 17, recoloured to the brand palette, pins and
+  labels drawn at build time, the attribution in the corner, about 78 KB as WebP.
+
+**Multi-page sites on one spine**
+- Header unchanged, the home as a typographic directory, the footer as the sitemap with `aria-current="page"` styled,
+  and cross-links inside the prose. No new menu needed.
+
 ---
 
 ## 10 · Where we look for references

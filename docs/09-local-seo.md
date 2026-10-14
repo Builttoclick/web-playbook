@@ -131,6 +131,28 @@ variants**:
 
 ---
 
+## Field notes from the log
+
+- **A free, scriptable "is it unclaimed?" check:** load the Maps place page in a headless browser (logged out, "limited
+  view"); "Claim this business" is still in the page text. Clip the side panel only and move the mouse off the map first.
+- Confirm a "permanently closed" listing the same way: the place page's text says so, with the address and phone.
+- **Always read the listing's website field.** It may point to a sister brand's domain, with another phone number and
+  another cart, or to a domain the business does not even name. Check it with `nslookup` and `curl`: `curl` alone returns
+  `000`, which is ambiguous; `nslookup` separates "down" from "does not exist".
+- Logged-out Maps shows only three reviews and two photos and the gallery will not open: get reviews from a review API
+  (about two minutes), and large photos through the size suffix on the photo URLs (main images served through the photo
+  proxy reject it with 400). Open "See photos" and scroll every scrollable panel to collect the photo URLs.
+- A logged-out Maps search anchors to the city of your IP. "No results" for a generic term in a small town is a real
+  finding only if the search is moved to that town (or run from its coordinates).
+- OSRM's public routing server is a free, keyless source of "distance from the business" for area pages. Area copy drafted
+  by an AI needs a full manual fact pass before it ships.
+- A geotag survives on photos served from Worker static assets (they are served unmodified). iPhone Live Photo videos
+  carry the real GPS position in their QuickTime metadata.
+- **An "open now" badge needs a next-opening rule**: on Saturday after closing, with Sunday closed, it must say "open
+  Monday". Test it with a mocked clock before deploying, or show the hours as a rule instead.
+
+---
+
 ## Checklist · local, when it is in scope
 
 - [ ] Category verified against the country's live list; one primary, zero to three secondaries.

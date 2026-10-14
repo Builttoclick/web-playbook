@@ -370,7 +370,38 @@ dependency (it is already inside React Bits where needed).
 
 ---
 
-## 13 · How we verify an effects page
+## 13 · Field notes from the log
+
+- **Stripping per-instance inline styles took one page from 1.4 MB to 609 KB** (157 cards each carrying a glare gradient
+  and a noise SVG inline).
+- The `useId` collision (rule 3) had a visible symptom: the live glass's `backdrop-filter: url(#id)` resolved to the
+  poster's filter, which has no displacement map, so the refraction disappeared.
+- The lazy image collapsed by `place-items: center` made the card grow when the image arrived (a layout shift near 1.0).
+  Fix: `place-items: normal` and `width: 100%` on the image.
+- Counter boxes in `ch` leave slack with fonts whose digits are narrower than "0": measure the poster's final text width
+  and set it as an inline `min-width` before hydration.
+- If you use Astro islands instead, remember Astro serialises every island's props into the HTML: map items to exactly
+  what the island paints before passing them.
+- **Pixel-comparing WebGL canvases** in a browser: wrap `HTMLCanvasElement.prototype.getContext` to force
+  `preserveDrawingBuffer: true` before the bundles load, then draw each canvas into a 2D canvas and diff `getImageData`.
+  Some effects have a fixed-frame mode through their props.
+- **Mechanical port of a WebGL effect to a custom element:** copy the helpers, shaders and effect body verbatim, run the
+  body inside `connectedCallback` in an immediately invoked function (keeps its early returns and cleanup), turn refs
+  into `{ current: el }`, move cleanup to `disconnectedCallback`. A leftover prop fails loudly, which is what you want.
+- **"The site does not load on my computer" was the browser.** A heavy three.js + GSAP page (about 11 MB) ran at about 30
+  fps on an integrated GPU in one privacy-focused browser, with its shields or hardware acceleration as the suspects. Test
+  in another Chromium browser before touching the site.
+- **Weigh any WebGL page with one snippet:** `WEBGL_debug_renderer_info` for the GPU, a three-second
+  `requestAnimationFrame` count for the frame rate, and `performance.getEntriesByType('resource')` sorted by
+  `transferSize` for the heaviest files.
+- React Bits is a copy-paste catalogue (JavaScript or TypeScript, CSS or Tailwind variants), not an npm import. One of
+  its text components renders a fixed `<p>`: patch an `as` prop before using it on a heading.
+- Icon packages used by some components (Hugeicons) resolve fine under the Preact alias and tree-shake to the icons you
+  import.
+
+---
+
+## 14 · How we verify an effects page
 
 Never by eye in an automation pane. We run small scripts with a real headless browser:
 

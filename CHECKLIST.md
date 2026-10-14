@@ -157,7 +157,7 @@ it was missed at least once on a site we delivered. The reasoning behind each li
 - [ ] **L1** · **GATE** · [SEO] The agency owner said to index this site; their words and the timestamp are in the header.
 - [ ] **L2** · **GATE** · [SEO] `INDEXABLE = True`, `lastmod` updated; `index` on every page except 404 and legal; no `X-Robots-Tag` on the canonical host; preview hosts 301 to the domain or stay noindex.
 - [ ] **L3** · **GATE** · [SEO] www → apex and http → https, both 301, keeping path and query.
-- [ ] **L4** · [SPEED] HTML edge-cache rule (24 h, scoped to the host, query string out of the key, 404s 60 s) and a deploy that purges pages + sitemap + robots + 404 + old redirect URLs; `MISS` then `HIT` verified.
+- [ ] **L4** · [SPEED] HTML served from the edge: on Pages sites a cache rule (24 h, scoped to the host, query string out of the key, 404s 60 s); Worker static-asset sites are edge-served without one. Either way a deploy that purges pages + sitemap + robots + 404 + old redirect URLs; `MISS` then `HIT` verified.
 - [ ] **L5** · **GATE** · [SEO] Search Console domain property (DNS TXT) owned and verified; sitemap submitted **after** the purge; 0 errors.
 - [ ] **L6** · [SEO] "Request indexing" for the home and the three key pages, handed over and pressed.
 - [ ] **L7** · [SEO] IndexNow key file at the root and a ping (202).

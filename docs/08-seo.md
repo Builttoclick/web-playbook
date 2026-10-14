@@ -168,6 +168,64 @@ removal expires.
 
 ---
 
+## Field notes from the log
+
+**Indexing and Search Console**
+- **Diagnose "pages not in Google" from three facts, never guesses:** URL Inspection's coverage state, its last crawl
+  time, and the live page's robots meta. "Excluded by noindex" with a crawl from before launch and an indexable live page
+  is simply stale: press "Request indexing".
+- URL Inspection takes 8 to 10 seconds per URL (43 URLs, about six minutes): run it in the background.
+- The Search Console sitemaps API's `contents.indexed` field always returns 0. Do not report it.
+- A noindex page must stay out of the sitemap, or Search Console flags "submitted URL marked noindex".
+- **Regenerating a sitemap without remembering unchanged URLs re-dates every URL to today.** Keep `lastmod` honest: only
+  pages whose content changed get a new date.
+- Astro sites serve `/sitemap-index.xml`, not `/sitemap.xml` (404), and write the home without a trailing slash. Read
+  the `Sitemap:` lines in robots.txt first, and normalise URLs before purging.
+- A brand-new domain was indexed quickly from the sitemap alone. With "always use HTTPS" off, Google indexed its
+  `http://` copies within a day.
+
+**Redesigns and relaunches**
+- **SEO safety net for a redesign:** build or crawl the old site first, then diff every page's title, description,
+  canonical, H1, H2s, JSON-LD and internal links against the new build before launch.
+- **A relaunch cost a ranking guide about 85% of its impressions.** The new page had 1,112 words against 1,664, and had
+  lost its "Step 1 to 6" H2s and its long FAQ (the likely cause, not proven). When rebuilding a page that ranks, keep its
+  length, its step headings and its FAQ.
+- Assert that no literal `None`, `undefined` or `null` ever reaches a generated head tag.
+
+**Structured data and names**
+- For a person's name: `Person` with `sameAs` plus a link back from the about page. `ProfilePage` (with `dateCreated` and
+  `dateModified`) is Google's type for a page about one person, and a `description` that repeats the visible answer
+  sentence word for word suits "who is X" answers.
+- Google's brand guidelines forbid its trademark in a domain name: a phrase containing it can live in the title and the
+  H1, not in an exact-match domain.
+- Validators: changing only the `#url=` hash on an open validator tab does not re-run the test; go to `about:blank`
+  first. Breadcrumb detection by regex on JSON-LD misses microdata, RDFa and breadcrumbs rendered by JavaScript.
+
+**Research**
+- **Quoted-phrase searches through a SERP API return large result counts** because Google drops the quotes and counts
+  the fallback. The real "nobody uses this phrase" signal is zero exact matches of the normalised phrase in the returned
+  titles, snippets and URLs.
+- **Proving a store is invisible to Google in three requests:** its product URLs return the home's `<title>` and
+  canonical, a grep for a product name in the HTML finds nothing, and `sitemap.xml` returns the home page.
+- Reading a prospect's existing site: a Wix site may have only some pages indexed, its originals load full size without
+  the resize transform in the image URL, and a profile website link tagged `utm_medium=wix_google_business_profile` shows
+  the listing was set up through Wix. A WordPress sitemap can answer HTTP 404 with a complete body. A domain that
+  redirects to a Facebook page means the "website" is the Facebook page.
+
+**Share cards**
+- Name each card file with a hash of its H1 (`<page>-<hash>.jpg`), so a new headline gives a new URL that scrapers fetch
+  again, and have the build warn when a page has no card.
+- A card renderer must delete the previous output before rendering (a "file exists and is big enough" wait accepted the
+  stale one), and a template that asks for a font by `local()` renders Arial on a machine without it: inject the site's
+  own `@font-face`.
+- Font size by character count (88, 74, 62 and 54 px for up to 28, 36, 46 and more characters) in a flex column with
+  `justify-content: space-between` serves short taglines and long questions without overlaps.
+- A design-tool export has no Open Graph tags: add `og:title`, `og:image` and `og:url` in the `<head>` and the WhatsApp
+  preview works without changing a pixel.
+- Lighthouse SEO around 66 on a page that is noindex on purpose is expected, not a bug.
+
+---
+
 ## Checklist · SEO before launch
 
 - [ ] Every page: unique title ≤ 60, unique description ≤ 158, one H1 first, no heading jumps (footer too).

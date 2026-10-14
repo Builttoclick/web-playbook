@@ -185,6 +185,34 @@ before classifying it.
 
 ---
 
+## Field notes from the log
+
+- **Never put `opacity: 0` in a base rule that a keyframe animation is meant to lift.** With `animation: none` under
+  reduced motion the element stays invisible. Put `opacity: 0` only in the keyframe's `from`, with
+  `animation-fill-mode: both`, so "no animation" means "final state". An element that must END hidden keeps `opacity: 0`
+  with `forwards` and gets `display: none` under reduced motion.
+- **Lighthouse Accessibility below 100 with odd blended colours** means axe caught text in the middle of a fade. If the
+  safety net reveals everything at once, make that path instant (`transition: none` before adding the class), so the
+  audit only ever sees opacity 0 or 1.
+- **A GSAP `from()` with a ScrollTrigger applies its start state at load** (`immediateRender`) and holds it until it
+  plays: a large `scale` start state near the edge widens the page for the whole visit.
+- **While the web font loads, headings render in the wider fallback**, and a text-splitting effect keeps words
+  unbreakable: one long word pushed a 390 px page to 462 px for half a second. Metric-matched fallbacks fix it.
+- Run pulses, spins and shines only while on screen, and animate `transform`, never `left` or `top`.
+- Animated icons exported from a design tool need their keyframes copied into the site CSS. Keep them paused until an
+  observer adds a `play` class, and rewrite their loops to end visible and run once: the exported loops faded to nothing
+  40% of the time.
+- To zoom an SVG map, animate its `viewBox`. To label pins without collisions, place the pins first, then try candidate
+  label spots (box width about font size × glyph width × characters) and drop a label that has no room.
+- A before/after slider needs the same camera angle in both images. When a render and a finished photo differ in side
+  and framing, use a dissolve or a sliding card instead of a divider.
+- GSAP weights, minified and gzipped: core 27.6 KB, ScrollTrigger 17.6, DrawSVG 2.1, MorphSVG 9.3; Lenis 5.3. The four
+  together are about 53 KB. SplitText ships free with GSAP now (with a `mask` option).
+- Phone emulation over the DevTools protocol (mobile plus touch) flips `(hover: hover) and (pointer: fine)` to false, so
+  "arrows only for a mouse" can be tested headless.
+
+---
+
 ## Verify motion with a renderer, never with your eyes on a hidden pane
 
 Automation browser panes that are hidden throttle animation frames to a couple per second, never load lazy

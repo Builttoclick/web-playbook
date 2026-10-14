@@ -105,6 +105,20 @@ answers a concrete promise of that business, written on the sheet in one line.
 - Sparklines drawn with stroke dashes over `vector-effect: non-scaling-stroke` render cut; when porting,
   reveal them with `clip-path` instead.
 
+### More export gotchas from the log
+
+- A design chat cannot open a local folder: the handoff is dragging up to about twenty flat files with descriptive names
+  into the chat.
+- **An export ZIP includes an `uploads/` folder with everything that was attached to the chat: never deploy the ZIP
+  whole.** Sheets link to each other by their export file names, so rename to slugs and rewrite the links, or the live
+  navigation 404s. Icons referenced by a name built at runtime (`'icon-' + name + '.svg'`) need every icon copied.
+- The native export runtime fetches React from a public CDN, with subresource integrity, on every visit, unless an inline
+  resources map points those URLs at local vendor files: a "zero third-party requests" claim can be false.
+- Before choosing how to publish an export, check whether it is fixed-width or fluid: grep for `width:1[0-9]{3}px`. Only
+  max-widths means fluid, which needs nothing more than `overflow-x: clip`. The type ladder, colours, corner cuts and
+  keyframes of an export come out with greps over `clip-path:`, `box-shadow:`, `font:` and `@keyframes`.
+- One headless mode dropped the DevTools connection on bundled exports; the other worked. Try both before debugging.
+
 ### How the chosen sheet becomes code
 
 The generator reads the sheet: tokens and component styles from its inline styles (parsed, not retyped),
@@ -146,6 +160,15 @@ real alpha channel: better than any exported MP4.
 
 Free sources we use: Fontshare (Satoshi, Clash Display, General Sans, Cabinet Grotesk), Google Fonts (always
 self-hosted), Coolors for palettes, Texturelabs for grain and paper textures.
+
+**Recovering a logo that only exists as a raster:** identify the typeface by overlaying candidates and scoring the
+overlap, fit the scale by least squares over the letter boxes, take the advances from the font itself, and trace the
+glyph outlines from the font file (fontTools pens, with its kerning) for a crisp SVG. Low-contrast edges in a JPEG (cream
+on white) are read on luminance, not colour: JPEG keeps colour at half resolution.
+
+**Reusing a client's own watermark on new photos:** with two exports of the same template, the mark's alpha is one minus
+the photo over the background (rebuild the background under the mark by inpainting). A sticker burned onto a flat surface
+comes off better with seamless cloning from the surface next to it than with plain inpainting, which leaves a halo.
 
 ---
 

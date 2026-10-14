@@ -385,7 +385,8 @@ refuses on a failing gate and checks status + content type + size = the build. D
 2. On their word (the toolkit never flips it): `INDEXABLE = True`, `lastmod` updated, their words and
    the timestamp in the checklist header, rebuild. Sitemap with only indexable pages, robots with the
    Sitemap line, no `X-Robots-Tag` on the canonical host, preview hosts 301 or stay noindex.
-3. Zone rules: HTTPS and TLS 1.2, www → apex 301 keeping path and query, the HTML edge-cache rule.
+3. Zone rules: HTTPS and TLS 1.2, www → apex 301 keeping path and query, and the HTML edge-cache rule on Pages sites
+   (a Worker serving static assets is edge-cached without one).
 4. The launch command: strict audit, deploy, purge (pages, sitemap, robots, 404, old URLs), verify live,
    then the Search Console property and the sitemap **after** the purge, IndexNow, and the "Request
    indexing" links handed over.
@@ -486,6 +487,40 @@ Never "it's all done" with an open gate. Never a list of what was done without w
   PLACEHOLDER/  worker.js  wrangler.jsonc
   DELIVERY/     the delivery document builder, docx and PDF
 ```
+
+---
+
+## Field notes from the log
+
+**Research for a demo**
+- **Confirm the lead's actual site before writing "no website":** the domain they name may be empty while another one
+  is live, and a domain that redirects to Facebook means their "site" is the Facebook page. `whois` gives the
+  registration date, the Wayback Machine's CDX API (`/cdx/search/cdx?url=<domain>&limit=1&fl=timestamp`, slow) gives the
+  first capture, and `dig MX` tells you a future DNS move must carry their mail records.
+- **Public sources for a lead's images:** a Facebook page's `og:image`, fetched with Facebook's crawler User-Agent, is
+  its 720 px profile picture (much better than Instagram's); Facebook group posts give the original photo the same way;
+  TikTok photo posts need a real browser; logged-out Instagram shows only the 12 newest posts and no longer returns
+  captions to bot user agents. A shared iCloud photo link can be downloaded without logging in through Apple's public
+  CloudKit endpoints, which is handy when a client sends their photos that way.
+- Leave any claim you could not verify out of the demo copy until it is verified.
+
+**Running the build**
+- **Ask for the analytics and session-recording IDs on day one.** A deploy gate that demanded them blocked going live a
+  day later.
+- **Do not promise "everything in your name" unless it is.** When analytics, Search Console and session recordings live
+  under the agency, say they are shared with full access to an account the client names, if they want it. Install the
+  ad pixel only when the client hands over the ad account, whatever a template proposal says.
+- **A step that must happen in an automated AI routine goes in code, not in the prompt.** Told in prose to run a data
+  pull first, the model skipped it twice. Run the command from the wrapper before the model starts, and hand it the exit
+  code and the output. Anything computable goes in the script; the model only writes.
+- Two builders on one generator ship each other's half-done work. Besides agreeing who builds and who deploys: keep
+  variants in their own folder, compare the source files' modification times against your own edits, build large changes
+  in a separate git worktree, and treat "change the data" and "deploy" as separate acts.
+- When a brand agency hands over a folder (brief, strategy, manual), read the brief and the strategy before writing a
+  single question: they answer half the intake. Pull only those subfolders (one full pull was 573 MB of logo variants).
+  Brand kits can ship **trial fonts** (check the file names; live use needs a licence), template leftovers (the embedded
+  font list tells the truth), and colours only as outlined shapes (sample the logo PNG). Shared-drive file names often
+  arrive in Unicode NFD: compare in NFC.
 
 ---
 

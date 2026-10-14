@@ -65,7 +65,9 @@ report afterwards, with the version and the live check. A failed QA means no dep
   an entrypoint ruleset, **append** the rule (`POST .../rulesets/<id>/rules`); a `PUT` to the entrypoint replaces every
   rule in the phase. When a platform gotcha like this shows up on one site, sweep every client zone the same day: we
   found it on our own domain and two client sites still answered 200 on www a month later.
-- **The HTML edge-cache rule** (`http_request_cache_settings` phase): `cache: true`, edge TTL override 86,400 s,
+- **On Pages sites, the HTML edge-cache rule.** (A Worker serving static assets already answers `cf-cache-status: HIT`
+  with no rule at all, so Worker sites skip this step; they still need the purge.) The rule
+  (`http_request_cache_settings` phase): `cache: true`, edge TTL override 86,400 s,
   **browser TTL "respect origin"** (the browser keeps revalidating, so a purge is visible at once), **scoped to the
   site's hostnames** (never the whole zone: subdomains running apps with state must not cache HTML), and
   `cache_key.custom_key.query_string.exclude.all: true` so `?gclid=` and `?utm_` share the clean page's copy and one
@@ -159,11 +161,27 @@ manage the domain through forms), and puts a captcha on its availability check. 
 4. **The billing contact decides who the receipt is made out to**, not who pays. If the domain is included in your
    package and you pay it, put yourself as billing contact when you file, or you pay a receipt you cannot deduct. We
    made this mistake three times in a row before writing it down. Ask to be the technical contact too.
-5. Timeline: automatic technical check within 24 h, a confirmation email the holder must answer within 8 days, approval
-   in 24 to 48 h, payment within 15 days of approval, active on payment. **48 to 72 hours end to end** if the holder
-   answers. Availability: NXDOMAIN at `1.1.1.1` is the signal (the official check has a captcha).
-6. In a hurry: a `.com` from Cloudflare Registrar is live in minutes at cost, and can redirect to the country domain
-   later.
+5. Timeline: the registry's own pages promise a technical check within 24 h, a confirmation email to answer within 8
+   days, approval in 24 to 48 h and payment within 15 days. **In practice five new domains delegated 8 to 24 minutes
+   after payment and confirmation (17 on average).** Put your own address as the responsible email and you answer the
+   confirmation yourself; the client never has to. Cloudflare's `activated_on` for the zone is the source of truth.
+6. **Availability: NXDOMAIN does not mean free.** A domain registered "with DNS later" answers NXDOMAIN while the
+   registry says "not available" (it may even be the client's own). Ask the registry. Its home-page availability form
+   has no captcha (only a one-use hidden token and randomised field names, so a script can re-fetch the page per query
+   and keep cookies); the captcha sits on the owner and expiry lookups.
+7. The `.py` zone is rebuilt every 30 minutes (at :00 and :30; the SOA serial is that Unix time, readable from any
+   NXDOMAIN's authority section), so a change can only appear at the next build. Read delegation straight from a
+   registry server (`dig +norec NS <domain> @<registry server>`), not a resolver. A domain registered with DNS later
+   sits on placeholder nameservers once active.
+8. Changes after registration go through the registry's modification form: a DNS-only change applied in about 20
+   minutes, while a combined contacts + DNS change waited for the 24 to 48 h approval (send DNS on its own). Only the
+   administrative contact changes the holder; the technical contact changes technical data, DNS included.
+9. **A domain the client already owns needs almost nothing:** file the registry's modification form with the email
+   the domain was registered with, the registry mails the client a link, they forward it, you enter the nameservers.
+   Moving ownership itself is done by the administrative contact (a company that lost its contacts can use a signed
+   letter); if the agency itself is the registrant, the registry will not mediate a dispute.
+10. In a hurry: a `.com` from Cloudflare Registrar is live in minutes at cost, and can redirect to the country domain
+    later.
 
 ### An existing domain somewhere else
 - **Find the registrar without WHOIS:** RDAP (`https://rdap.verisign.com/com/v1/domain/<domain>` for `.com`, with your
@@ -204,6 +222,91 @@ Two professional mailboxes are part of our package, on the client's domain.
 
 ---
 
+## Field notes from the log
+
+Smaller lessons, each one paid for once.
+
+**Workers with static assets**
+- Assets are served before the Worker script runs. `html_handling: "auto-trailing-slash"` answers `/p/x` with a redirect
+  to `/p/x/` and `/page.html` to `/page`; `.mjs` is served as `text/javascript`; `_headers` is read as configuration and,
+  like dotfiles, is not served itself; `.well-known/` is served. With `run_worker_first: ["/api/*"]` the script runs only
+  on the API paths, so the 404 page, `html_handling` and `_headers` keep working everywhere else.
+- Wrangler can leave its own config and a `.wrangler/` folder inside the deploy folder: add an `.assetsignore` with
+  `.wrangler`. Files over 25 MiB are refused with no useful message (shrink image-heavy PDFs first). A file deleted
+  locally answers 404 after the next deploy.
+- A Worker custom domain creates its own DNS record (an existing record blocks it), and **it attaches even while the zone
+  is still pending**: attach the placeholder the day the client pays, and it serves the moment the registry delegates.
+- A Worker with routes has no `workers.dev` URL. To test it before the domain resolves, enable its subdomain through the
+  API, test, and disable it again (it takes about a minute to go away).
+- **Move a hostname between Workers without a DNS gap:** deploy the new Worker with the hostname in its routes (wrangler
+  reassigns it), then remove it from the old one. Never detach first: deleting a custom domain deletes its DNS record and
+  resolvers cache the NXDOMAIN.
+- **Park a site without losing it:** point the same Worker's `assets.directory` at a placeholder with
+  `not_found_handling: "single-page-application"`. One production Worker per domain; the sales demo stays a separate
+  Worker.
+
+**Pages**
+- `/x.html` answers 308 to the extensionless path (query kept): `curl` without `-L` shows 0 bytes while Python follows
+  silently.
+- `_redirects` wins over a static file, works with and without the trailing slash, and cannot redirect by domain.
+  Merging pages is three acts: the data, the `_redirects` line, deleting the old folders; then purge the old URLs.
+- **The per-deployment URL that wrangler prints (`https://<hash>.<project>.pages.dev`) is the reliable QA target.** The
+  branch and production aliases served the previous build for about a minute.
+
+**Deploy mechanics**
+- **Poll for a string from the new HTML, not for a 200.** A new Worker domain served the placeholder for 40 to 60 s.
+- **A purge right after deploy can race:** one edge kept the previous HTML (one byte different) after a four-second wait,
+  and a second purge fixed it. Compare the downloaded size on the apex and on www.
+- **Deploy scripts that push git commits ship what is committed, not the working tree.** Commit the new files by name,
+  or the script says "nothing to push", purges, and nothing changes. Check `git status` for other people's uncommitted
+  pages first, because the deploy ships the whole folder.
+- **Long deploys:** a background deploy dies with its session, and its log lies because Python buffers stdout when it
+  writes to a file: run `PYTHONUNBUFFERED=1 python -u`. Never pipe a deploy through `tail` (it cuts the error lines). A
+  script that reports "0 pages change" because the live fetch failed is lying; rerun it. On Windows, printing wrangler's
+  emoji crashes Python's console encoding: reconfigure stdout to UTF-8.
+- In a shell, a heredoc that fails followed by `cd ... && deploy` on the next line still deploys. Keep the `&&` on the
+  heredoc's own line.
+- A fresh zone has Always Use HTTPS off, and Workers custom domains also answer plain http (Safari shows "Not secure" and
+  Google indexes `http://` copies within a day). Check `curl -s -o /dev/null -w "%{http_code} %{redirect_url}"
+  http://<host>/` on every launch: it must be a 301 to https.
+- When a page leaves the sitemap (legal pages, removed pages), a purge list built from the sitemap stops purging it, and
+  the edge keeps it for a day: purge those URLs by hand after any change.
+- A cache rule keyed on the host caches `sitemap.xml`, `robots.txt` and the 404 too. Judge a rule on the third request
+  (about one URL in four misses twice). Unique click ids (`fbclid`) are harmless misses.
+- A Cloudflare API token can return 401 on the "verify token" endpoint and still work on every real endpoint: test a
+  token on an endpoint you actually use. The API allows about 1,200 calls per five minutes per token.
+
+**DNS**
+- Verify DNS against two independent sources: the zone's authoritative nameservers (no cache) and a public resolver, not
+  the API that wrote the record. A new DKIM record may take a while to resolve publicly. A long DKIM value is served as
+  several strings of 255 characters or less, as it should be.
+- Plain `nslookup` with no server can lie about free domains (some ISP routers answer every name). Use `nslookup <domain>
+  8.8.8.8`, and for a `.com` confirm with RDAP (404 means unregistered).
+- **Moving a domain between Cloudflare accounts with no downtime:** add it as a new pending zone in the second account,
+  fill it, then change the nameservers at the registrar. The old zone keeps answering until the registry's NS TTL
+  expires, so do not delete it before that. An activation check call activated the zone about a minute after the switch.
+- **Creating a zone for a live domain:** the automatic import found nothing. Read the live records from the old
+  authoritative servers (NS, A, MX, TXT, www and the usual subdomains), include a random name to detect wildcards, mirror
+  everything as DNS-only, and compare record by record against the pending zone's nameservers before anyone switches.
+- To know whether a `.com` nameserver change was saved, ask the registry (`nslookup -type=NS <domain>
+  a.gtld-servers.net`) and read RDAP's "last changed".
+
+**Email**
+- **SPF `~all` plus DMARC `p=none` cannot break anything**, so it is the safe first step on a live domain; harden only
+  after reading the reports. `sp=reject` is free hardening once no subdomain sends mail. A DMARC `rua` pointing to another
+  domain needs an authorisation record on the receiving side (`<domain>._report._dmarc.<receiving-domain>` with
+  `v=DMARC1`), or the big providers silently drop the reports.
+- **Google Workspace DKIM cannot be created from DNS alone**: generate the key in the admin console first. Without custom
+  DKIM, Workspace signs with its own unaligned domain, so mail passes DMARC only through SPF and forwarded mail fails.
+- DMARC reports: Google's cover the UTC day and arrive zipped, Microsoft's gzipped; the same report ID can arrive several
+  times (count by ID); zero reports with correct records usually just means no mail was seen.
+- Prove where an email really came from with a DKIM verification library, and check the signature has no `l=` tag.
+  Blocklist lookups flap: try three times per list.
+- Mail API habits: an attachment adds about 37% in transit (base64); "last login: never" means the mailbox was never
+  opened, which is the nudge you send after delivery.
+
+---
+
 ## Checklist · deploy and domain
 
 - [ ] Domain registered in the client's name (or the existing registrar identified), zone on Cloudflare.
@@ -214,6 +317,6 @@ Two professional mailboxes are part of our package, on the client's domain.
 - [ ] Two mailboxes with SPF, DKIM, DMARC; webmail redirect; credentials message drafted.
 - [ ] Worker or Pages config from the templates; preview hosts 301 to the domain.
 - [ ] Every deploy through the deploy command: audit, diff, upload, wait, purge, verify live = build, `HIT` after.
-- [ ] Launch: www and http 301 to https apex with path and query; HTML cache rule scoped to the host, query string out
-      of the key, 404s cached 60 s; purge list complete.
+- [ ] Launch: www and http 301 to https apex with path and query; on Pages, the HTML cache rule scoped to the host,
+      query string out of the key, 404s cached 60 s; purge list complete.
 - [ ] Domain expiry date recorded; renewal reminders set.

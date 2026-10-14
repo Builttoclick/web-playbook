@@ -59,6 +59,9 @@ and a generation service costs **money on every build**. "Free and open source" 
   old endpoint with the key in the path); Python's default User-Agent gets a 403 (send a curl-like one); the monitoring
   locations are an object of booleans, not an array, and the error for the wrong shape misleadingly says "select at least
   3 monitoring locations"; contact lists can only be edited in the panel.
+- **Monthly uptime from HetrixTools:** its report endpoint ignores date parameters (the free plan returns the last seven
+  days), so compute a month's uptime from each downtime record's overlap with the month, clipped to the monitor's creation
+  date.
 - **Clarity's project ID and its data-export token are different things.** The tag needs the first; reading numbers by
   API needs the second, which has a low daily limit, so archive the numbers daily.
 - **Instagram scraping tools** that worked in mid-2026 stopped working (401 without login). What still works without
